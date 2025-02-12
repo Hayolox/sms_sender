@@ -43,15 +43,16 @@ flutter pub get
 import 'package:sms_sender/sms_sender.dart';
 
 void sendSMS() async {
-  
+  // Only applicable for Android (used to select SIM card if the device has dual SIM) 
+ List<Map<String, dynamic>> resultSimcard = await SmsSender.getSimCards();
+
+
   await SmsSender.sendSms(
     phoneNumber: "12345678",
     message: "Hello, this is a test SMS!",
-    simSlot: 0, // Android only: Used to select SIM card
+    simSlot: resultSimcard[0]['simSlot'],
   );
 
-  // Only applicable for Android (used to select SIM card if the device has dual SIM)
-  await SmsSender.getSimCards();
 }
 ```
 
