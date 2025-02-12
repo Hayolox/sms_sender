@@ -28,7 +28,7 @@ or
 dependencies:
   sms_sender: 
     git:
-      url: https://github.com/Hayolox/sms_sender_background.git
+      url: https://github.com/Hayolox/sms_sender.git
 ```
 
 Then run:
