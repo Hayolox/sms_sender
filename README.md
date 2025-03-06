@@ -56,3 +56,5 @@ void sendSMS() async {
 }
 ```
 
+## Note  
+- This plugin can only be tested on a **real device** (not on an emulator)
