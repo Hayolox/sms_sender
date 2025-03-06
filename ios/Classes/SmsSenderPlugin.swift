@@ -3,6 +3,8 @@ import UIKit
 import MessageUI
 
 public class SmsSenderPlugin: NSObject, FlutterPlugin, MFMessageComposeViewControllerDelegate {
+    private var flutterResult: FlutterResult?
+
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "sms_sender", binaryMessenger: registrar.messenger())
         let instance = SmsSenderPlugin()
@@ -31,10 +33,11 @@ public class SmsSenderPlugin: NSObject, FlutterPlugin, MFMessageComposeViewContr
             composeVC.recipients = [phoneNumber]
             composeVC.body = message
 
-          
+           
+            flutterResult = result
+
             if let rootViewController = UIApplication.shared.keyWindow?.rootViewController {
                 rootViewController.present(composeVC, animated: true, completion: nil)
-                result("SMS sent successfully!")
             } else {
                 result(FlutterError(code: "FAILED", message: "Unable to present SMS composer", details: nil))
             }
@@ -43,8 +46,21 @@ public class SmsSenderPlugin: NSObject, FlutterPlugin, MFMessageComposeViewContr
         }
     }
 
-  
     public func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) {
-        controller.dismiss(animated: true, completion: nil)
+        controller.dismiss(animated: true) {
+            if let flutterResult = self.flutterResult {
+                switch result {
+                case .sent:
+                    flutterResult("SMS sent successfully!")
+                case .cancelled:
+                    flutterResult(FlutterError(code: "CANCELLED", message: "SMS was cancelled", details: nil))
+                case .failed:
+                    flutterResult(FlutterError(code: "FAILED", message: "Failed to send SMS", details: nil))
+                @unknown default:
+                    flutterResult(FlutterError(code: "UNKNOWN", message: "Unknown error occurred", details: nil))
+                }
+                self.flutterResult = nil // Reset result setelah digunakan
+            }
+        }
     }
 }
