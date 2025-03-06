@@ -1,6 +1,6 @@
 name: sms_sender
 description: "Flutter plugin to send SMS messages in the background and select a specific SIM card"
-version: 1.0.2
+version: 1.0.3
 homepage: https://github.com/Hayolox/sms_sender
 repository: https://github.com/Hayolox/sms_sender
 issue_tracker: https://github.com/Hayolox/sms_sender/issues
