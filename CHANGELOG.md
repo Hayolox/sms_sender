@@ -1,3 +1,8 @@
+## 1.0.4
+
+* adjustment : change  permission SEND_SMS & READ_PHONE_STATE package to project
+
+
 ## 1.0.3
 
 * Fix SMS result handling in iOS implementation
