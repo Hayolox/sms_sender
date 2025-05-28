@@ -1,5 +1,3 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   package="com.example.sms_sender">
-  <uses-permission android:name="android.permission.SEND_SMS"/>
-  <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
 </manifest>
