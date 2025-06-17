@@ -1,3 +1,8 @@
+## 1.0.5
+
+* fix: subscrptionInfo fetching logic from list of active subscriptions
+
+
 ## 1.0.4
 
 * adjustment : change  permission SEND_SMS & READ_PHONE_STATE package to project
