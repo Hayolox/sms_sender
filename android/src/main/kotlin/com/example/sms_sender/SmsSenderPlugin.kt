@@ -115,7 +115,7 @@ class SmsSenderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
                 return
             }
 
-            val subscriptionInfo = subscriptionList.getOrNull(simSlot)
+            val subscriptionInfo = subscriptionList.find { it.simSlotIndex == simSlot }
             if (subscriptionInfo == null) {
                 result.error("INVALID_SIM_SLOT", "SIM slot $simSlot not available", null)
                 return
