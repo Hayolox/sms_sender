@@ -8,7 +8,7 @@ Flutter plugin to send SMS messages in the background and select a specific SIM 
 * Show SMS composer using `MFMessageComposeViewController` (iOS)
 * Select a specific SIM card for sending SMS (Android only)
 * List SIM cards (Android only)
-* Works on Android API 19+ (KitKat)
+* Works on Android API 21+ (Lollipop) - minSdk 21 required
 
 ## Permissions
 
@@ -43,6 +43,16 @@ Then run:
 
 ```sh
 flutter pub get
+```
+
+**Important:** Ensure your `android/app/build.gradle` has `minSdk` set to 21 or higher:
+
+```gradle
+android {
+    defaultConfig {
+        minSdk = 21  // Required
+    }
+}
 ```
 
 ## Usage
