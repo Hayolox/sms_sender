@@ -1,3 +1,9 @@
+## 1.0.7
+
+* feat: add `getPhoneNumbers()` function to retrieve phone numbers (requires `READ_PHONE_NUMBERS` on Android 11+)
+* feat: add `SimCard` and `PhoneNumber` models (replaces `Map<String, dynamic>`)
+* refactor: separate `getSimCards()` (uses `READ_PHONE_STATE`) and `getPhoneNumbers()` (uses `READ_PHONE_NUMBERS`)
+
 ## 1.0.6
 
 * fix: improve permission handling to avoid conflicts with other plugins

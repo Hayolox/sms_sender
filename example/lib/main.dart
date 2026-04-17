@@ -28,84 +28,89 @@ class _SmsExampleAppState extends State<SmsExampleApp> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
 
-  List<Map<String, dynamic>> _simCards = [];
-  int? _selectedSimIndex;
+  List<SimCard> _simCards = [];
+  List<PhoneNumber> _phoneNumbers = [];
+  SimCard? _selectedSim;
   String _statusMessage = '';
 
   Future<void> _fetchSimCards() async {
     try {
-      List<Map<String, dynamic>> sims = await SmsSender.getSimCards();
+      final sims = await SmsSender.getSimCards();
       if (mounted) {
-        setState(() {
-          _simCards = sims;
-        });
+        setState(() => _simCards = sims);
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _statusMessage = 'Error getting SIM cards: $e';
-        });
+        setState(() => _statusMessage = 'Error getting SIM cards: $e');
       }
     }
   }
 
+  Future<void> _fetchPhoneNumbers() async {
+    try {
+      final numbers = await SmsSender.getPhoneNumbers();
+      if (mounted) {
+        setState(() => _phoneNumbers = numbers);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _statusMessage = 'Error getting phone numbers: $e');
+      }
+    }
+  }
+
+  String _getPhoneNumber(int simSlot) {
+    final match = _phoneNumbers.where((pn) => pn.simSlot == simSlot);
+    if (match.isEmpty) return 'No number available';
+    return match.first.phoneNumber.isEmpty
+        ? 'No number available'
+        : match.first.phoneNumber;
+  }
+
   Future<void> _sendSms() async {
-    String phoneNumber = _phoneController.text.trim();
-    String message = _messageController.text.trim();
+    final phoneNumber = _phoneController.text.trim();
+    final message = _messageController.text.trim();
 
     if (phoneNumber.isEmpty || message.isEmpty) {
-      setState(() {
-        _statusMessage = 'Numbers and messages cannot be empty!';
-      });
+      setState(() => _statusMessage = 'Numbers and messages cannot be empty!');
       return;
     }
 
-    if (_selectedSimIndex == null) {
-      setState(() {
-        _statusMessage = 'Select SIM before sending SMS!';
-      });
+    if (_selectedSim == null) {
+      setState(() => _statusMessage = 'Select SIM before sending SMS!');
       return;
     }
 
     try {
-      String result = await SmsSender.sendSms(
+      final result = await SmsSender.sendSms(
         phoneNumber: phoneNumber,
         message: message,
-        simSlot: _selectedSimIndex!,
+        simSlot: _selectedSim!.simSlot,
       );
-      setState(() {
-        _statusMessage = result;
-      });
+      setState(() => _statusMessage = result);
     } catch (e) {
-      setState(() {
-        _statusMessage = 'Failed to send SMS: $e';
-      });
+      setState(() => _statusMessage = 'Failed to send SMS: $e');
     }
   }
 
   void _showSimSelection() {
     if (_simCards.isEmpty) {
-      setState(() {
-        _statusMessage = 'No SIM detected!';
-      });
+      setState(() => _statusMessage = 'No SIM detected!');
       return;
     }
 
     showModalBottomSheet(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: _simCards.asMap().entries.map((entry) {
-              int index = entry.key;
-              Map<String, dynamic> sim = entry.value;
+            children: _simCards.map((sim) {
               return ListTile(
-                title: Text('${sim['carrierName']} (SIM $index)'),
+                title: Text('${sim.carrierName} (SIM ${sim.simSlot})'),
+                subtitle: Text(_getPhoneNumber(sim.simSlot)),
                 onTap: () {
-                  setState(() {
-                    _selectedSimIndex = index;
-                  });
+                  setState(() => _selectedSim = sim);
                   Navigator.pop(context);
                 },
               );
@@ -137,11 +142,8 @@ class _SmsExampleAppState extends State<SmsExampleApp> {
             const SizedBox(height: 20),
             GestureDetector(
               onTap: () async {
-                await _fetchSimCards().then(
-                  (value) {
-                    _showSimSelection();
-                  },
-                );
+                await Future.wait([_fetchSimCards(), _fetchPhoneNumbers()]);
+                _showSimSelection();
               },
               child: Container(
                 width: double.infinity,
@@ -153,9 +155,9 @@ class _SmsExampleAppState extends State<SmsExampleApp> {
                 ),
                 child: Center(
                   child: Text(
-                    _selectedSimIndex == null
+                    _selectedSim == null
                         ? 'Select SIM'
-                        : 'SIM ${_selectedSimIndex! + 1} Selected',
+                        : '${_selectedSim!.carrierName} (SIM ${_selectedSim!.simSlot})',
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),

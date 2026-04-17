@@ -3,6 +3,7 @@ package com.example.sms_sender
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.os.Build
 import android.telephony.SubscriptionManager
 import android.telephony.SmsManager
 import androidx.core.app.ActivityCompat
@@ -20,6 +21,7 @@ class SmsSenderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
     private var pendingResult: MethodChannel.Result? = null
     private var pendingMethod: String? = null
     private var pendingArgs: Map<String, Any>? = null
+    private var pendingPermissions: MutableList<String>? = null
     
     companion object {
         private const val PERMISSION_REQUEST_CODE = 9876
@@ -36,15 +38,26 @@ class SmsSenderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
-            "getSimCards" -> requestPermissionAndProceed(Manifest.permission.READ_PHONE_STATE, call.method, result)
+            "getSimCards" -> requestPermissionsAndProceed(
+                listOf(Manifest.permission.READ_PHONE_STATE),
+                call.method, result
+            )
+            "getPhoneNumbers" -> {
+                val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    listOf(Manifest.permission.READ_PHONE_STATE, Manifest.permission.READ_PHONE_NUMBERS)
+                } else {
+                    listOf(Manifest.permission.READ_PHONE_STATE)
+                }
+                requestPermissionsAndProceed(permissions, call.method, result)
+            }
             "sendSms" -> {
                 val phoneNumber = call.argument<String>("phoneNumber")
                 val message = call.argument<String>("message")
                 val simSlot = call.argument<Int>("simSlot") ?: 0
 
                 if (!phoneNumber.isNullOrBlank() && !message.isNullOrBlank()) {
-                    requestPermissionAndProceed(
-                        Manifest.permission.SEND_SMS,
+                    requestPermissionsAndProceed(
+                        listOf(Manifest.permission.SEND_SMS),
                         call.method,
                         result,
                         mapOf("phoneNumber" to phoneNumber, "message" to message, "simSlot" to simSlot)
@@ -57,26 +70,37 @@ class SmsSenderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
         }
     }
 
-    private fun requestPermissionAndProceed(permission: String, method: String, result: MethodChannel.Result, args: Map<String, Any>? = null) {
+    private fun requestPermissionsAndProceed(
+        permissions: List<String>,
+        method: String,
+        result: MethodChannel.Result,
+        args: Map<String, Any>? = null
+    ) {
         val currentActivity = activity
         if (currentActivity == null) {
             result.error("ACTIVITY_NULL", "Activity is not attached", null)
             return
         }
-        
-        if (ContextCompat.checkSelfPermission(currentActivity, permission) == PackageManager.PERMISSION_GRANTED) {
+
+        val notGranted = permissions.filter {
+            ContextCompat.checkSelfPermission(currentActivity, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (notGranted.isEmpty()) {
             proceedWithMethod(method, result, args)
         } else {
             pendingResult = result
             pendingMethod = method
             pendingArgs = args
-            ActivityCompat.requestPermissions(currentActivity, arrayOf(permission), PERMISSION_REQUEST_CODE)
+            pendingPermissions = notGranted.toMutableList()
+            ActivityCompat.requestPermissions(currentActivity, notGranted.toTypedArray(), PERMISSION_REQUEST_CODE)
         }
     }
 
     private fun proceedWithMethod(method: String, result: MethodChannel.Result, args: Map<String, Any>? = null) {
         when (method) {
             "getSimCards" -> getSimCards(result)
+            "getPhoneNumbers" -> getPhoneNumbers(result)
             "sendSms" -> {
                 val phoneNumber = args?.get("phoneNumber") as String
                 val message = args["message"] as String
@@ -117,6 +141,39 @@ class SmsSenderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
             result.success(simCards)
         } catch (e: Exception) {
             result.error("ERROR", "Failed to get SIM cards: ${e.message}", null)
+        }
+    }
+
+    private fun getPhoneNumbers(result: MethodChannel.Result) {
+        try {
+            val currentActivity = activity
+            if (currentActivity == null) {
+                result.error("ACTIVITY_NULL", "Activity is not attached", null)
+                return
+            }
+
+            val subscriptionManager = currentActivity.getSystemService(SubscriptionManager::class.java)
+            if (subscriptionManager == null) {
+                result.error("UNAVAILABLE", "Could not access SubscriptionManager", null)
+                return
+            }
+
+            val subscriptionList = subscriptionManager.activeSubscriptionInfoList
+            if (subscriptionList.isNullOrEmpty()) {
+                result.error("NO_SIM", "No active SIM cards found", null)
+                return
+            }
+
+            val phoneNumbers = subscriptionList.map { info ->
+                mapOf(
+                    "simSlot" to info.simSlotIndex,
+                    "phoneNumber" to (info.number ?: "")
+                )
+            }
+
+            result.success(phoneNumbers)
+        } catch (e: Exception) {
+            result.error("ERROR", "Failed to get phone numbers: ${e.message}", null)
         }
     }
 
@@ -170,9 +227,10 @@ class SmsSenderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activity
                 pendingResult = null
                 pendingMethod = null
                 pendingArgs = null
+                pendingPermissions = null
                 
                 if (result != null && method != null) {
-                    if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                         proceedWithMethod(method, result, args)
                     } else {
                         result.error("PERMISSION_DENIED", "User denied permission", null)
